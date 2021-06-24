@@ -171,7 +171,7 @@ def test_simple(args):
         for plot_name, toplot in (('costvol_min', lowest_cost), ('disp', sigmoid_output_resized)):
             toplot = toplot.squeeze()
             normalizer = mpl.colors.Normalize(vmin=toplot.min(), vmax=np.percentile(toplot, 95))
-            mapper = cm.ScalarMappable(norm=normalizer, cmap='magma')
+            mapper = cm.ScalarMappable(norm=normalizer, cmap='plasma')
             colormapped_im = (mapper.to_rgba(toplot)[:, :, :3] * 255).astype(np.uint8)
             im = pil.fromarray(colormapped_im)
 

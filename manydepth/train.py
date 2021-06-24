@@ -4,8 +4,11 @@
 # which allows for non-commercial use only, the full terms of which are made
 # available in the LICENSE file.
 
-from .trainer import Trainer
-from .options import MonodepthOptions
+import sys
+sys.path.insert(0, '/home/seok436/PycharmProjects/manydepth')
+
+from trainer import Trainer
+from options import MonodepthOptions
 
 options = MonodepthOptions()
 opts = options.parse()

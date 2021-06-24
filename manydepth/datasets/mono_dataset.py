@@ -140,10 +140,24 @@ class MonoDataset(data.Dataset):
         do_flip = self.is_train and random.random() > 0.5
 
         folder, frame_index, side = self.index_to_folder_and_frame_idx(index)
-
         poses = {}
         if type(self).__name__ in ["CityscapesPreprocessedDataset", "CityscapesEvalDataset"]:
             inputs.update(self.get_colors(folder, frame_index, side, do_flip))
+        elif type(self).__name__ in ["NextchipDataset"]:
+            for i in self.frame_idxs:
+                try:
+                    inputs[("color", i, -1)] = self.get_color(
+                        folder, frame_index + i, side, do_flip)
+                except FileNotFoundError as e:
+                    if i != 0:
+                        # fill with dummy values
+                        inputs[("color", i, -1)] = \
+                            Image.fromarray(np.zeros((100, 100, 3)).astype(np.uint8))
+                        poses[i] = None
+                    else:
+                        raise FileNotFoundError(f'Cannot find frame - make sure your '
+                                                f'--data_path is set correctly, or try adding'
+                                                f' the --png flag. {e}')
         else:
             for i in self.frame_idxs:
                 if i == "s":

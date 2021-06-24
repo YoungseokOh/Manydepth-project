@@ -8,6 +8,9 @@ import os
 os.environ["MKL_NUM_THREADS"] = "1"  # noqa F402
 os.environ["NUMEXPR_NUM_THREADS"] = "1"  # noqa F402
 os.environ["OMP_NUM_THREADS"] = "1"  # noqa F402
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import sys
+sys.path.insert(0, '/home/seok436/PycharmProjects/manydepth')
 
 import numpy as np
 import time
@@ -21,8 +24,8 @@ from tensorboardX import SummaryWriter
 
 import json
 
-from .utils import readlines, sec_to_hm_str
-from .layers import SSIM, BackprojectDepth, Project3D, transformation_from_parameters, \
+from utils import readlines, sec_to_hm_str
+from layers import SSIM, BackprojectDepth, Project3D, transformation_from_parameters, \
     disp_to_depth, get_smooth_loss, compute_depth_errors
 
 from manydepth import datasets, networks
@@ -45,7 +48,6 @@ class Trainer:
         self.parameters_to_train = []
 
         self.device = torch.device("cpu" if self.opt.no_cuda else "cuda")
-
         self.num_scales = len(self.opt.scales)
         self.num_input_frames = len(self.opt.frame_ids)
         self.num_pose_frames = 2
@@ -70,7 +72,6 @@ class Trainer:
             self.matching_ids.append(idx)
             if idx not in frames_to_load:
                 frames_to_load.append(idx)
-
         print('Loading frames: {}'.format(frames_to_load))
 
         # MODEL SETUP
@@ -132,10 +133,13 @@ class Trainer:
         # DATA
         datasets_dict = {"kitti": datasets.KITTIRAWDataset,
                          "cityscapes_preprocessed": datasets.CityscapesPreprocessedDataset,
-                         "kitti_odom": datasets.KITTIOdomDataset}
+                         "kitti_odom": datasets.KITTIOdomDataset,
+                         "nextchip": datasets.NextchipDataset}
         self.dataset = datasets_dict[self.opt.dataset]
 
-        fpath = os.path.join("splits", self.opt.split, "{}_files.txt")
+        splits_path = os.path.abspath("../splits")
+        fpath = os.path.join(splits_path, self.opt.split, "{}_files.txt")
+        # fpath = os.path.join("splits", self.opt.split, "{}_files.txt")
         train_filenames = readlines(fpath.format("train"))
         val_filenames = readlines(fpath.format("val"))
         img_ext = '.png' if self.opt.png else '.jpg'
@@ -143,9 +147,7 @@ class Trainer:
         num_train_samples = len(train_filenames)
         self.num_total_steps = num_train_samples // self.opt.batch_size * self.opt.num_epochs
 
-        train_dataset = self.dataset(
-            self.opt.data_path, train_filenames, self.opt.height, self.opt.width,
-            frames_to_load, 4, is_train=True, img_ext=img_ext)
+        train_dataset = self.dataset(self.opt.data_path, train_filenames, self.opt.height, self.opt.width, frames_to_load, 4, is_train=True, img_ext=img_ext)
         self.train_loader = DataLoader(
             train_dataset, self.opt.batch_size, True,
             num_workers=self.opt.num_workers, pin_memory=True, drop_last=True)
@@ -216,10 +218,9 @@ class Trainer:
         """Run a single epoch of training and validation
         """
 
-        print("Training")
+        print("Training!")
         self.set_train()
         for batch_idx, inputs in enumerate(self.train_loader):
-
             before_op_time = time.time()
 
             outputs, losses = self.process_batch(inputs, is_train=True)
@@ -251,7 +252,6 @@ class Trainer:
         """
         for key, ipt in inputs.items():
             inputs[key] = ipt.to(self.device)
-
         mono_outputs = {}
         outputs = {}
 
